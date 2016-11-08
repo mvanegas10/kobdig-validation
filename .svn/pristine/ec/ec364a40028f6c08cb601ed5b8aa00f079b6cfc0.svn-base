@@ -1,0 +1,206 @@
+package kobdig.urbanSimulation;
+
+import kobdig.agent.Agent;
+import kobdig.agent.Fact;
+import kobdig.gui.FactParser;
+import kobdig.logic.TruthDegree;
+
+import java.util.ArrayList;
+
+/**
+ * Created by Meili on 01/07/16.
+ */
+public class Investor {
+
+    // ATTRIBUTES
+
+    /**
+     * Unique ID for the investor
+     */
+    private String id;
+
+    /**
+     * The agent associated to the investor
+     */
+    private Agent agent;
+
+    /**
+     * The household associated to the investor
+     */
+    private Household household;
+
+    /**
+     * Degree with which the investor wants to investDegree
+     */
+    private double investDegree;
+
+    /**
+     * Degree of speculation
+     */
+    private double speculate;
+
+    /**
+     * Previous purchasing power to buy property
+     */
+    private double previousPurchasingPower;
+
+    /**
+     * Current purchasing power to buy property
+     */
+    private double currentPurchasingPower;
+
+    /**
+     * Current rent received for rented property
+     */
+    private double currentRent;
+
+    /**
+     * Net monthly income to pay rent
+     */
+    private double previousNetMonthlyIncome;
+
+    /**
+     * Net monthly income to pay rent
+     */
+    private double currentNetMonthlyIncome;
+
+
+    /**
+     * A list of purchasable properties given household's characteristics
+     */
+    private ArrayList<Property> purchasableProperties;
+
+    /**
+     * The property the investor owns
+     */
+    private Property property;
+
+    // CONSTRUCTOR
+
+    /**
+     * Independent Investor's constructor
+     * @param id The id
+     * @param agent The BDI agent that represents the investor
+     * @param purchasingPower The current purchasing power
+     */
+    public Investor(String id, Agent agent, double purchasingPower){
+        this.id = id;
+        this.agent = agent;
+        this.investDegree = Math.random();
+        this.speculate = Math.random();
+        this.currentPurchasingPower = purchasingPower;
+        this.previousPurchasingPower = purchasingPower;
+        this.previousNetMonthlyIncome = 0;
+        this.currentNetMonthlyIncome = 0;
+        this.currentRent = 0;
+        this.purchasableProperties = new ArrayList<>();
+        this.property = null;
+    }
+
+    /**
+     * Household Investor's constructor
+     * @param agent The BDI agent that represents the investor
+     * @param household The household associated
+     */
+    public Investor(Agent agent, Household household, Property property){
+        this.agent = agent;
+        this.household = household;
+        this.currentPurchasingPower = household.getCurrentPurchasingPower();
+        this.currentNetMonthlyIncome = household.getCurrentNetMonthlyIncome();
+        this.household.setCurrentNetMonthlyIncome(this.household.getCurrentNetMonthlyIncome() + this.currentRent);
+        this.currentRent = property.getCurrentCapitalizedRent();
+        this.property = property;
+    }
+
+    // GETTERS AND SETTERS
+
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public Agent getAgent() {
+        return agent;
+    }
+
+    public void setAgent(Agent agent) {
+        this.agent = agent;
+    }
+
+    public double getCurrentPurchasingPower() {
+        return currentPurchasingPower;
+    }
+
+    public void addPurchasableProperty(Property purchasable){
+        this.purchasableProperties.add(purchasable);
+    }
+
+    public Property getProperty() {
+        return property;
+    }
+
+    public void setProperty(Property property) {
+        this.property = property;
+    }
+
+    // METHODS
+
+    /**
+     * Updates the agent's beliefs, desires and goals considering a given fact
+     * @param stringFact The fact
+     */
+    public void updateBelief(String stringFact){
+        FactParser parser = new FactParser(stringFact);
+        Fact fact = parser.getFact();
+        TruthDegree truthDegree = parser.getTrust();
+        agent.updateBeliefs(fact,truthDegree);
+        agent.updateDesires();
+        agent.updateGoals();
+    }
+
+    /**
+     * Generates a step in the simulation
+     * @param time The time in the simulation
+     */
+    public void step(int time){
+
+        if (household != null){
+            household.setCurrentNetMonthlyIncome(household.getCurrentNetMonthlyIncome() + property.getCurrentCapitalizedRent() - currentRent);
+            currentRent = property.getCurrentCapitalizedRent();
+
+            currentPurchasingPower = household.getCurrentPurchasingPower();
+            currentNetMonthlyIncome = household.getCurrentNetMonthlyIncome();
+        }
+        else{
+            // TODO: Determine how the purchasing power would evolve
+            previousPurchasingPower = currentPurchasingPower;
+            double rnd1 = Math.random();
+
+            if (rnd1 < 0.20) currentPurchasingPower = previousPurchasingPower + (previousPurchasingPower*Math.log(time + 1))/20;
+            else if (rnd1 < 0.4) {
+                currentPurchasingPower = previousPurchasingPower - (previousPurchasingPower*Math.log(time + 1))/20;
+                currentPurchasingPower = (currentPurchasingPower < 0)? 0: currentPurchasingPower;
+            }
+
+            if (property != null){
+                currentNetMonthlyIncome = currentNetMonthlyIncome + property.getCurrentCapitalizedRent() - currentRent;
+                currentRent = property.getCurrentCapitalizedRent();
+            }
+        }
+
+        purchasableProperties = new ArrayList<>();
+
+        //TODO: Determine how these values will be calculated
+        // Updates the speculate belief
+        if(speculate > 0.5) updateBelief("sp:" + speculate);
+        else updateBelief("not sp:1");
+
+        // Updates the investDegree belief
+        updateBelief("i:" + investDegree);
+
+    }
+}

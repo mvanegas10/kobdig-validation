@@ -1,0 +1,545 @@
+package kobdig.urbanSimulation;
+
+import kobdig.agent.Agent;
+import kobdig.agent.Fact;
+import org.postgis.PGgeometry;
+
+import java.io.*;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Properties;
+
+/**
+ * Created by Meili on 20/06/16.
+ */
+public class Simulation {
+
+    /**
+     * Temporally income gap
+     */
+    public static final double INCOME_GAP = 0.3;
+
+    /**
+     * The household agents involved in the simulation
+     */
+    protected static ArrayList<Household> households;
+
+    /**
+     * The investors agents involved in the simulation
+     */
+    protected static ArrayList<Investor> investors;
+
+    /**
+     * The promoters agents involved in the simulation
+     */
+    protected static ArrayList<Promoter> promoters;
+
+    /**
+     * The properties involved in the simulation
+     */
+    protected static ArrayList<Property> properties;
+
+    /**
+     * The properties involved in the simulation
+     */
+    protected static ArrayList<Property> freeProperties;
+
+    /**
+     * The properties involved in the simulation
+     */
+    protected static ArrayList<Property> forRentProperties;
+
+    /**
+     * The neighborhoods involved in the simulation
+     */
+    protected static ArrayList<Neighborhood> neighborhoods;
+
+    /**
+     * The household's agent
+     */
+    protected static Agent householdAgent;
+
+    /**
+     * The investor's agent
+     */
+    protected static Agent investorAgent;
+
+    /**
+     * The promoter's agent
+     */
+    protected static Agent promoterAgent;
+
+    /**
+     * The time reference in the simulation
+     */
+    protected static int time;
+
+    /**
+     * The number of simulations to generate
+     */
+    protected static int numSim;
+
+    /**
+     * Connection
+     */
+    protected static Connection conn;
+
+    /**
+     * Searches a neighborhood by name
+     *
+     * @param name The name of the neighborhood
+     * @return The neighborhood, null if not found
+     */
+    public static Neighborhood getNeighborhoodFromName(String name) {
+        Neighborhood neighborhood = null;
+        int i = 0;
+        while (i < neighborhoods.size() && (neighborhood = neighborhoods.get(i++)) != null) {
+            if (neighborhood.getName().equals(name)) {
+                return neighborhood;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Searches property by Id
+     *
+     * @param id The id of the property
+     * @return The property, null if not found
+     */
+    public static Property getPropertyFromId(String id) {
+        Property property = null;
+        int i = 0;
+        while (i < properties.size() && (property = properties.get(i++)) != null) {
+            if (property.getId().equals(id)) {
+                return property;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Generates a neighborhood step in the simulation
+     *
+     * @param neighborhood The neighborhood
+     */
+    public static void neighborhoodStep(Neighborhood neighborhood) {
+        int count = 0;
+        double sum = 0.0;
+        for (int i = 0; i < properties.size(); i++) {
+            Property current = properties.get(i);
+            if (neighborhood.getName().equals(current.getNeighborhood())) {
+                sum += current.getCurrentValue() - current.getPreviousValue();
+                count++;
+            }
+        }
+        double average = sum / count;
+        double newStatus = neighborhood.getStatus() + 0.02*average + Math.random() * Neighborhood.STATUS_VARIABILITY;
+        newStatus = (newStatus < 0)? 0.0: newStatus;
+        neighborhood.setStatus(newStatus);
+    }
+
+    /**
+     * Generates a household step in the simulation for an specific household
+     * @param household The household
+     * @param time The time in the simulation
+     */
+    public static void householdUpdateBeliefs(Household household, int time) {
+        household.step(time);
+        Property cheapestProperty = null;
+        double cheapestPrice = Double.POSITIVE_INFINITY;
+
+        // Updates de affordBuying and affordRenting beliefs and gets the cheapest property
+        int purchFound = 0;
+        int rentFound = 0;
+
+        for (Property property : freeProperties) {
+            if(property.getCurrentPrice() < cheapestPrice){
+                cheapestPrice = property.getCurrentPrice();
+                cheapestProperty = property;
+            }
+
+            if(household.getCurrentPurchasingPower() >= property.getCurrentPrice()){
+                household.addPurchasableProperty(property);
+                purchFound++;
+            }
+        }
+
+        for (Property property : forRentProperties) {
+            if(household.getCurrentNetMonthlyIncome() >= property.getCurrentCapitalizedRent()){
+                household.addRentableProperty(property);
+                rentFound++;
+            }
+        }
+        if(purchFound > 0){
+            household.updateBelief("ab:" + Double.toString(purchFound/(0.0 + freeProperties.size())));
+        }
+        else{
+            household.updateBelief("not ab:1");
+        }
+        if(rentFound > 0){
+            household.updateBelief("ar:" + Double.toString(rentFound/(0.0 + forRentProperties.size())));
+        }
+        else{
+            household.updateBelief("not ar:1");
+        }
+
+        // Updates the buyingRentable belief
+        // TODO: Improve this approach
+        if(cheapestPrice < Double.POSITIVE_INFINITY){
+            if(household.getCurrentPurchasingPower() > cheapestPrice){
+                household.updateBelief("br:" + cheapestProperty.getCurrentCapitalizedRent()/(0.0 + cheapestProperty.getCurrentPotentialRent()));
+            }
+        }
+    }
+
+    /**
+     * Generates a household intention step in the simulation
+     * @param household The household
+     */
+    public static void householdIntentionStep(Household household) {
+        Iterator<Fact> iter = household.getAgent().goals().factIterator();
+        while(iter.hasNext()) {
+            String goal = iter.next().formula().toString();
+
+            // If the goal is to invest
+            if (goal.contains(Household.BUY) && goal.contains(Household.LANDLORD)){
+                Property taken = household.invest();
+                if (taken != null) {
+                    taken.setState(Property.SEEKING_TENANT);
+                    freeProperties.remove(taken);
+                    forRentProperties.add(taken);
+                    Investor newInvestor = new Investor(investorAgent, household,taken);
+                    investors.add(newInvestor);
+                }
+            }
+
+            // If the goal is to buy
+            else if (goal.contains(Household.BUY)){
+                Property taken = household.buyProperty();
+                if (taken != null) freeProperties.remove(taken);
+            }
+
+            // If the goal is to rent
+            if (goal.contains(Household.RENT)){
+                Property taken = household.rentProperty();
+                if (taken != null) {
+                    forRentProperties.remove(taken);
+                    taken.setState(Property.RENTED);
+                }
+            }
+
+            // If the goal is to change and either sell or invest
+            if (goal.contains(Household.CHANGE)){
+
+                if (goal.contains(Household.LANDLORD)){
+                    household.invest(household.getProperty());
+                    freeProperties.remove(household.getProperty());
+                    forRentProperties.add(household.getProperty());
+                    Investor newInvestor = new Investor(investorAgent, household,household.getProperty());
+                    household.getProperty().setState(Property.SEEKING_TENANT);
+                    investors.add(newInvestor);
+                }
+                else if (goal.contains(Household.SELL)){
+                    //TODO: Implement the seller part of the property
+                    freeProperties.add(household.getProperty());
+                }
+
+
+                Property taken = household.buyProperty();
+                if (taken != null) freeProperties.remove(taken);
+            }
+
+        }
+    }
+
+    /**
+     * Generates a household step in the simulation for an specific household
+     * @param investor The household
+     * @param time The time in the simulation
+     */
+    public static void investorUpdateBeliefs(Investor investor, int time) {
+        investor.step(time);
+        Property cheapestProperty = null;
+        double cheapestPrice = Double.POSITIVE_INFINITY;
+
+        // Updates de affordBuying and affordRenting beliefs and gets the cheapest property
+        int purchFound = 0;
+
+        for (Property property : freeProperties) {
+            if(property.getCurrentPrice() < cheapestPrice){
+                cheapestPrice = property.getCurrentPrice();
+                cheapestProperty = property;
+            }
+
+            if(investor.getCurrentPurchasingPower() >= property.getCurrentPrice()){
+                investor.addPurchasableProperty(property);
+                purchFound++;
+            }
+        }
+
+        if(purchFound > 0) investor.updateBelief("ab:" + Double.toString(purchFound/(0.0 + freeProperties.size())));
+
+        else investor.updateBelief("not ab:1");
+
+
+        // Updates the buyingRentable belief
+        // TODO: Improve this approach
+        if(cheapestPrice < Double.POSITIVE_INFINITY){
+            if(investor.getCurrentPurchasingPower() > cheapestPrice){
+                investor.updateBelief("br:" + cheapestProperty.getCurrentCapitalizedRent()/(0.0 + cheapestProperty.getCurrentPotentialRent()));
+            }
+        }
+
+        // Updates the sellingRentable belief
+        // TODO: Improve this approach
+        if (investor.getProperty() != null) {
+            if (cheapestPrice < Double.POSITIVE_INFINITY) {
+                if (investor.getCurrentPurchasingPower() > cheapestPrice) {
+                    investor.updateBelief("sr:" + (cheapestProperty.getCurrentCapitalizedRent() + investor.getProperty().getCurrentCapitalizedRent()) / (0.0 + cheapestProperty.getCurrentCapitalizedRent() + investor.getProperty().getCurrentCapitalizedRent()));
+                }
+            }
+        }
+    }
+
+    /**
+     * Generates a investor intention step in the simulation
+     * @param investor The household
+     */
+    public static void investorIntentionStep(Investor investor) {
+        Iterator<Fact> iter = investor.getAgent().goals().factIterator();
+        while(iter.hasNext()) {
+            String goal = iter.next().formula().toString();
+
+            // If the goal is to invest
+            if (goal.contains(Investor.BUY) && goal.contains(Investor.LANDLORD)){
+                Property taken = investor.invest();
+                if (taken != null) {
+                    freeProperties.remove(taken);
+                    forRentProperties.add(taken);
+                    taken.setState(Property.SEEKING_TENANT);
+                }
+            }
+
+            // If the goal is to sell
+            // TODO: Improve this approach
+            if (!goal.contains(Investor.NOT_SELL) && goal.contains(Investor.SELL)){
+                freeProperties.add(investor.getProperty());
+            }
+
+        }
+    }
+
+    /**
+     *
+     * Instantiates all the households in the file
+     * @param conn The connection from the database
+     * @throws SQLException
+     */
+    public static void createHouseholds(Connection conn) throws SQLException {
+        Statement s = conn.createStatement();
+        ResultSet r = s.executeQuery("select * from households");
+        while( r.next() ) {
+            int id = r.getInt(1);
+            String lastname = r.getString(2);
+            double purchasingPower = r.getDouble(3);
+            double netMonthlyIncome = r.getDouble(4);
+            Household household = new Household(Integer.toString(id), householdAgent,lastname,purchasingPower,netMonthlyIncome);
+            households.add(household);
+        }
+        s.close();
+    }
+
+    /**
+     * Instantiates all the investors in the file
+     * @param idManager The ID manager
+     * @param file The investor.csv file
+     * @return The id manager
+     * @throws IOException If error I/O Error
+     */
+    public static int createInvestorsFromFile(int idManager, File file) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
+        String line = null;
+        try {
+            while ((line = reader.readLine()) != null) {
+                String[] data = line.split(",");
+                double invest =  Double.parseDouble(data[0]);
+                double speculate = Double.parseDouble(data[1]);
+                double purchasingPower = Double.parseDouble(data[2]);
+                Investor investor = new Investor(Integer.toString(idManager++), investorAgent, purchasingPower);
+                investors.add(investor);
+            }
+        } catch (IOException e) {
+            System.out.println("Simulation.createInvestors");
+            e.printStackTrace();
+        }
+        reader.close();
+        return idManager;
+    }
+
+    /**
+     * Instantiates all the promoters in the file
+     * @param idManager The ID manager
+     * @param file The promoter.csv file
+     * @return The id manager
+     * @throws IOException If error I/O Error
+     */
+    public static int createPromotersFromFile(int idManager, File file) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
+        String line = null;
+        try {
+            while ((line = reader.readLine()) != null) {
+                String[] data = line.split(",");
+                double riskAverse =  Double.parseDouble(data[0]);
+                Promoter promoter = new Promoter(Integer.toString(idManager++), promoterAgent, riskAverse);
+                promoters.add(promoter);
+            }
+        } catch (IOException e) {
+            System.out.println("Simulation.createPromoters");
+            e.printStackTrace();
+        }
+        reader.close();
+        return idManager;
+    }
+
+    /**
+     * Instantiates all the properties in the database
+     * @param conn The connection from the database
+     * @throws SQLException
+     */
+    public static void createProperties(Connection conn) throws SQLException {
+        Statement s = conn.createStatement();
+        ResultSet r = s.executeQuery("select * from properties");
+        while( r.next() ) {
+            int id = r.getInt(1);
+            String neighborhood = r.getString(2);
+            double lat = r.getDouble(3);
+            double lon = r.getDouble(4);
+            double price = r.getDouble(5);
+            double rent = r.getDouble(6);
+            double value = r.getDouble(7);
+            PGgeometry geom = (PGgeometry)r.getObject(8);
+            Property property = new Property(Integer.toString(id), neighborhood,lat, lon, price, rent, value, geom);
+            properties.add(property);
+            freeProperties.add(property);
+        }
+        s.close();
+    }
+
+    /**
+     * Instantiates all the neighborhoods in the file
+     * @param idManager The ID manager
+     * @param file The neighborhood.csv file
+     * @throws IOException If error I/O Error
+     */
+    public static int createNeighborhoodsFromFile(int idManager, File file) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
+        String line = null;
+        try {
+            while ((line = reader.readLine()) != null) {
+                String[] data = line.split(",");
+                String name = data[0];
+                double status = Double.parseDouble(data[1]);
+                Neighborhood neighborhood = new Neighborhood(Integer.toString(idManager++), name, status);
+                neighborhoods.add(neighborhood);
+            }
+        } catch (IOException e) {
+            System.out.println("Simulation.createNeighborhoods");
+            e.printStackTrace();
+        }
+        reader.close();
+        return idManager;
+    }
+
+    /**
+     * Creates a connection to the database
+     * @param conn The resultant connection
+     * @throws ClassNotFoundException
+     * @throws SQLException
+     */
+    public static Connection createConnection(Connection conn) throws ClassNotFoundException, SQLException {
+        //  Load the JDBC driver and establish a connection.
+        Class.forName("org.postgresql.Driver");
+        String url = "jdbc:postgresql://localhost:5432/tomsa";
+        conn = DriverManager.getConnection(url, "Meili", "");
+        //  Add the geometry types to the connection.
+        ((org.postgresql.PGConnection)conn).addDataType("geometry",Class.forName("org.postgis.PGgeometry"));
+        ((org.postgresql.PGConnection)conn).addDataType("box3d",Class.forName("org.postgis.PGbox3d"));
+        return conn;
+    }
+
+    public static void main(String[] args){
+        System.out.println("Testing the urbanSimulation Simulator...");
+        households = new ArrayList<>();
+        investors = new ArrayList<>();
+        promoters = new ArrayList<>();
+        properties = new ArrayList<>();
+        freeProperties = new ArrayList<>();
+        forRentProperties = new ArrayList<>();
+        neighborhoods = new ArrayList<>();
+
+        try {
+            conn = createConnection(conn);
+            numSim = 100;
+
+            // Get initializer files
+            File householdAgentFile = new File("/Users/Meili/kobdig/docs/householdAgent.apl");
+            File investorAgentFile = new File("/Users/Meili/kobdig/docs/investorAgent.apl");
+            File promoterAgentFile = new File("/Users/Meili/kobdig/docs/promoterAgent.apl");
+
+            File investorFile = new File("/Users/Meili/Desktop/I3S/docs/investor.csv");
+
+
+            // Instantiates all the classes
+
+            try {
+                householdAgent = new Agent(new FileInputStream(householdAgentFile));
+                investorAgent = new Agent(new FileInputStream(investorAgentFile));
+                promoterAgent = new Agent(new FileInputStream(promoterAgentFile));
+
+                createProperties(conn);
+                createHouseholds(conn);
+
+                createInvestorsFromFile(0,investorFile);
+
+                for (time = 0; time < numSim; time++) {
+
+                    // Updates market values
+
+                    for (Property property : properties) property.step(time);
+
+                    for (Neighborhood neighborhood : neighborhoods) neighborhoodStep(neighborhood);
+
+                    for (Household household : households) {
+                        // Updates household's beliefs
+                        householdUpdateBeliefs(household, time);
+                        // Generates household's new intentions
+                        householdIntentionStep(household);
+                    }
+
+                    for (Investor investor : investors) {
+                        // Updates household's beliefs
+                        investorUpdateBeliefs(investor, time);
+                        // Generates household's new intentions
+                        investorIntentionStep(investor);
+                    }
+
+                    System.out.println("FreeProperties: " + freeProperties.size() + '\n' + "ForRentProperties: " + forRentProperties.size() );
+                }
+
+
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            conn.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+
+    }
+}

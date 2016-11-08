@@ -1,0 +1,51 @@
+PROPOSITIONS:
+
+//  Household Agent
+
+ch              Change home
+b               Buy
+ab              Affords buying
+ar              Affords renting
+o               Owns a property
+r               Renting: The household is renting a home, the household is a tenant
+sa              Satisfaction: comes from a threshold of the utility function
+s               Selling
+l               Landlord
+br              Buying rentability
+i               Investment
+
+//  Investor Agent
+
+sr              Selling rentability
+sp              Speculate
+
+//  Promoter
+
+abl             Afford buy land
+ac              Afford construct
+sop             Selling off plans
+ra              Risk aversion
+bl              Buy land
+
+GENERATION RULES:
+
+//  Household Agent
+
+ab        , ch      => b
+¬ab and ar, ch      => r
+o and ¬sa ,         => ch and (s or l)
+α                   => i
+ab and br , i       => b and l
+
+//  Investor Agent
+	
+o and sr  , ¬sp     => s
+o and ¬sr ,         => ¬s
+o         , sp      => ¬s
+β                   => i
+ab and br , i       => b and l
+
+//  Promoter
+
+γ                   => ra
+abl and ¬ac , ¬ra   => bl and sop

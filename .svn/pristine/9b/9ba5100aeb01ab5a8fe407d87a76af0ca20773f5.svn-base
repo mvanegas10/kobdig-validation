@@ -1,0 +1,150 @@
+package kobdig.urbanSimulation;
+
+import kobdig.agent.Agent;
+
+/**
+ * Created by Meili on 01/07/16.
+ */
+public class Investor {
+
+    // ATTRIBUTES
+
+    /**
+     * Unique ID for the investor
+     */
+    private String id;
+
+    /**
+     * The agent associated to the investor
+     */
+    private Agent agent;
+
+    /**
+     * The household associated to the investor
+     */
+    private Household household;
+
+    /**
+     * Degree with which the investor wants to invest
+     */
+    private double invest;
+
+    /**
+     * Degree of speculation
+     */
+    private double speculate;
+
+    /**
+     * Purchasing power to buy property
+     */
+    private double purchasingPower;
+
+    /**
+     * The property the investor owns
+     */
+    private Property property;
+
+    // CONSTRUCTOR
+
+    /**
+     * Independent Investor's constructor
+     * @param id The id
+     * @param agent The BDI agent that represents the investor
+     * @param purchasingPower The current purchasing power
+     */
+    public Investor(String id, Agent agent, double purchasingPower){
+        this.id = id;
+        this.agent = agent;
+        this.invest = Math.random();
+        this.speculate = Math.random();
+        this.purchasingPower = purchasingPower;
+        this.property = null;
+    }
+
+    /**
+     * Household Investor's constructor
+     * @param agent The BDI agent that represents the investor
+     * @param household The household associated
+     */
+    public Investor(Agent agent, Household household){
+        this.agent = agent;
+        this.household = household;
+    }
+
+    // GETTERS AND SETTERS
+
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public Agent getAgent() {
+        return agent;
+    }
+
+    public void setAgent(Agent agent) {
+        this.agent = agent;
+    }
+
+    public double getInvest() {
+        return invest;
+    }
+
+    public void setInvest(double invest) {
+        this.invest = invest;
+    }
+
+    public double getSpeculate() {
+        return speculate;
+    }
+
+    public void setSpeculate(double speculate) {
+        this.speculate = speculate;
+    }
+
+    public double getPurchasingPower() {
+        return purchasingPower;
+    }
+
+    public void setPurchasingPower(double purchasingPower) {
+        this.purchasingPower = purchasingPower;
+    }
+
+    public Property getProperty() {
+        return property;
+    }
+
+    public void setProperty(Property property) {
+        this.property = property;
+    }
+
+    // METHODS
+
+    /**
+     * Determines if the investor affords buying a given property
+     * @param property The property to consider
+     * @return true if the investor affords buying the given property, false otherwise
+     */
+    public boolean affordsBuying(Property property){
+        if(purchasingPower >= property.getCurrentPrice()) return true;
+        return false;
+    }
+
+    /**
+     * Determines whether buying a given property is profitable or not, comparing it with the current state
+     * @param property The property to consider
+     * @return true if buying a the property is profitable, false otherwise
+     */
+    public boolean buyingRentability(Property property){
+        //TODO:Consider more variables to calculate the buying rentability
+        double currentMonthlyCosts = (this.property != null)? this.property.getCurrentCapitalizedRent(): 0.0;
+        double possibleMonthlyCosts = property.getCurrentCapitalizedRent();
+        if(currentMonthlyCosts > possibleMonthlyCosts) return false;
+        return true;
+    }
+
+}

@@ -1,0 +1,62 @@
+
+
+--
+-- Name: red_primaria; Type: TABLE; Schema: public; Owner: Meili
+--
+
+CREATE TABLE red_primaria (
+    gid integer NOT NULL,
+    fid_viaspp integer,
+    fid_1 integer,
+    fid_vias_p integer,
+    fid_vias_1 integer,
+    length numeric,
+    nomcl_ppal character varying(254),
+    eje character varying(2),
+    perfil character varying(4),
+    norma character varying(10),
+    tipo character varying(10),
+    troncal character varying(10),
+    ancho integer,
+    prop integer,
+    dist integer,
+    plazo character varying(10),
+    proyec character varying(15),
+    escenario character varying(30),
+    seccion character varying(3),
+    espapu integer,
+    longitud numeric,
+    modelo character varying(30),
+    vial_direc character varying(50),
+    nombre character varying(40),
+    estado character varying(50),
+    via_id numeric,
+    tipos_via character varying(254),
+    longitudin numeric,
+    fid_thiess integer,
+    flujo character varying(50),
+    geom geometry(MultiLineString)
+);
+
+
+ALTER TABLE red_primaria OWNER TO "Meili";
+
+--
+-- Name: red_primaria_gid_seq; Type: SEQUENCE; Schema: public; Owner: Meili
+--
+
+CREATE SEQUENCE red_primaria_gid_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE red_primaria_gid_seq OWNER TO "Meili";
+
+--
+-- Name: red_primaria_gid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: Meili
+--
+
+ALTER SEQUENCE red_primaria_gid_seq OWNED BY red_primaria.gid;

@@ -1,0 +1,37 @@
+package kobdig.urbanSimulation;
+
+import kobdig.agent.Agent;
+
+/**
+ * Created by Meili on 01/07/16.
+ */
+public class Promoter {
+
+    /**
+     * Unique ID for the promoter
+     */
+    private String id;
+
+    /**
+     * The agent associated to the promoter
+     */
+    private Agent agent;
+
+    /**
+     * Degree of risk averse
+     */
+    private double riskAverse;
+
+    /**
+     * The Promoter's constructor
+     * @param id The promoter's Id
+     * @param agent The promoter's agent
+     * @param riskAverse The promoter's risk aversion
+     */
+    public Promoter(String id, Agent agent, double riskAverse){
+        this.id = id;
+        this.agent = agent;
+        this.riskAverse = riskAverse;
+    }
+
+}

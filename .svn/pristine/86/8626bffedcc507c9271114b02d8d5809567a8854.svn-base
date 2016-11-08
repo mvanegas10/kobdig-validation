@@ -1,0 +1,81 @@
+package kobdig.urbanSimulation;
+
+/**
+ * Created by Meili on 21/06/2016.
+ */
+public class Neighborhood {
+
+    // CONSTANTS
+
+    /**
+     * Factor affecting variability in the neighborhood status
+     */
+    public static final double STATUS_VARIABILITY = 0.025;
+
+    // ATTRIBUTES
+
+    /**
+     * Unique ID for the neighborhood
+     */
+    private String id;
+
+    /**
+     * Neighborhoods name
+     */
+    private String name;
+
+    /**
+     * Current standing of the whole neighborhood represented in the model
+     */
+    private double status;
+
+
+    // CONSTRUCTOR
+
+    /**
+     * Neighborhood's Constructor
+     * @param id The neighborhood's id
+     * @param name The neighborhood's name
+     * @param status The neighborhood's status
+     */
+    public Neighborhood (String id, String name, double status){
+        this.id = id;
+        this.name = name;
+        this.status = status;
+    }
+
+    // GETTERS AND SETTERS
+
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getName(){
+
+        return name;
+    }
+
+    public void setName(String name){
+        this.name = name;
+    }
+
+    public double getStatus(){
+        return status;
+    }
+
+    public void setStatus(double status){
+        this.status = status;
+    }
+
+    // METHODS
+
+    public String toString(){
+        return name +  "," + status;
+    }
+
+}

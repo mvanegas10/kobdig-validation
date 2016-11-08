@@ -1,0 +1,54 @@
+package kobdig.urbanSimulation;
+
+import org.postgis.PGgeometry;
+
+/**
+ * Created by Meili on 7/19/16.
+ */
+public class Land {
+
+    // ATTRIBUTES
+
+    /**
+     * ID
+     */
+    private String id;
+
+    /**
+     * Latitude reference
+     */
+    private double latitude;
+
+    /**
+     * Longitude reference
+     */
+    private double longitude;
+
+    /**
+     * The land's price
+     */
+    private double price;
+
+    /**
+     * The geometry reference
+     */
+    private PGgeometry geom;
+
+    public Land(String id, double latitude, double longitude, double price, PGgeometry geom){
+        this.id = id;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.price = price;
+        this.geom = geom;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    // METHODS
+
+    public void step(int time){
+        price = (price - Math.exp(time) < 0)? 0.0: price - Math.exp(time);
+    }
+}

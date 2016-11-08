@@ -1,0 +1,361 @@
+package kobdig.urbanSimulation;
+
+import kobdig.agent.Agent;
+import kobdig.agent.Fact;
+import kobdig.gui.FactParser;
+import kobdig.logic.TruthDegree;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+
+/**
+ * Created by Meili on 21/06/2016.
+ */
+public class Household {
+
+    // CONSTANTS
+
+    /**
+     *  Buy
+     */
+    public static final String BUY = "b";
+
+    /**
+     *  Rent
+     */
+    public static final String RENT = "r";
+
+    /**
+     *  Change
+     */
+    public static final String CHANGE = "ch";
+
+    /**
+     *  Sell
+     */
+    public static final String SELL = "s";
+
+    /**
+     *  Landlord
+     */
+    public static final String LANDLORD = "l";
+
+    /**
+     *  Not Landlord
+     */
+    public static final String NOT_LANDLORD = "~l";
+
+    // ATTRIBUTES
+
+    /**
+     * Unique ID for the household
+     */
+    private String id;
+
+    /**
+     * The agent associated to the household
+     */
+    private Agent agent;
+
+    /**
+     * Household's lastname
+     */
+    private String lastname;
+
+    /**
+     * ID of the household's property
+     */
+    private Property property;
+
+    /**
+     * A list of purchasable properties given household's characteristics
+     */
+    private ArrayList<Property> purchasableProperties;
+
+    /**
+     * A list of rentable properties given household's characteristics
+     */
+    private ArrayList<Property> rentableProperties;
+
+    /**
+     * Indicates if the household owns its dwelling or not
+     */
+    private boolean ownerOccupied;
+
+    /**
+     * Purchasing power to buy home
+     */
+    private double previousPurchasingPower;
+
+    /**
+     * Net monthly income to pay rent
+     */
+    private double previousNetMonthlyIncome;
+
+    /**
+     * Purchasing power to buy home
+     */
+    private double currentPurchasingPower;
+
+    /**
+     * Net monthly income to pay rent
+     */
+    private double currentNetMonthlyIncome;
+
+    /**
+     * The quality coefficient in the utility function associated to the household
+     */
+    private double qualityCoefficient;
+
+    /**
+     * The centrality coefficient in the utility function associated to the household
+     */
+    private double centralityCoefficient;
+
+    /**
+     * The proximity coefficient in the utility function associated to the household
+     */
+    private double proximityCoefficient;
+
+    /**
+     * The degree with which the household desires to invest
+     */
+    private double investDegree;
+
+
+    // CONSTRUCTOR
+
+    /**
+     * Household's constructor
+     * @param id The household's id
+     * @param agent The BDI agent that represents the household
+     * @param lastname The household's last name
+     * @param purchasingPower The household's current purchasing power
+     * @param netMonthlyIncome The household's current net monthly income
+     */
+    public Household(String id, Agent agent, String lastname, double purchasingPower, double netMonthlyIncome) {
+        this.id = id;
+        this.agent = agent;
+        this.property = null;
+        this.purchasableProperties = new ArrayList<>();
+        this.rentableProperties = new ArrayList<>();
+        this.ownerOccupied = false;
+        this.lastname = lastname;
+        this.previousPurchasingPower = purchasingPower;
+        this.previousNetMonthlyIncome = netMonthlyIncome;
+        this.currentPurchasingPower = purchasingPower;
+        this.currentNetMonthlyIncome = netMonthlyIncome;
+
+        this.qualityCoefficient = Math.random();
+        this.centralityCoefficient = Math.random();
+        this.proximityCoefficient = Math.random();
+
+        double utility = qualityCoefficient + centralityCoefficient + proximityCoefficient;
+
+        this.qualityCoefficient = qualityCoefficient / utility;
+        this.centralityCoefficient = centralityCoefficient / utility;
+        this.proximityCoefficient = proximityCoefficient / utility;
+
+        this.investDegree = Math.random();
+    }
+
+    // GETTERS AND SETTERS
+
+    public Agent getAgent() {
+        return agent;
+    }
+
+    public void setAgent(Agent agent) {
+        this.agent = agent;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public Property getProperty() {
+        return property;
+    }
+
+    public ArrayList<Property> getPurchasableProperties() {
+        return purchasableProperties;
+    }
+
+    public ArrayList<Property> getRentableProperties() {
+        return rentableProperties;
+    }
+
+    public boolean isOwnerOccupied() {
+        return ownerOccupied;
+    }
+
+    public void setOwnerOccupied(boolean ownerOccupied) {
+        this.ownerOccupied = ownerOccupied;
+    }
+
+    public void setProperty(Property property) {
+        this.property = property;
+    }
+
+    public double getCurrentPurchasingPower() {
+        return currentPurchasingPower;
+    }
+
+    public double getCurrentNetMonthlyIncome() {
+        return currentNetMonthlyIncome;
+    }
+
+    public double getPreviousPurchasingPower() {
+        return previousPurchasingPower;
+    }
+
+    public double getPreviousNetMonthlyIncome() {
+        return previousNetMonthlyIncome;
+    }
+
+    public void setPreviousNetMonthlyIncome(double previousNetMonthlyIncome) {
+        this.previousNetMonthlyIncome = previousNetMonthlyIncome;
+    }
+
+    public void setPreviousPurchasingPower(double previousPurchasingPower) {
+        this.previousPurchasingPower = previousPurchasingPower;
+    }
+
+    public void setCurrentPurchasingPower(double currentPurchasingPower) {
+        this.currentPurchasingPower = currentPurchasingPower;
+    }
+
+    public void setCurrentNetMonthlyIncome(double currentNetMonthlyIncome) {
+        this.currentNetMonthlyIncome = currentNetMonthlyIncome;
+    }
+
+    // METHODS
+
+    /**
+     * Clears the purchasable and rentable lists for a new simulation step
+     */
+    public void clearPurchAndRentLists(){
+        this.purchasableProperties = new ArrayList<>();
+        this.rentableProperties = new ArrayList<>();
+    }
+
+    /**
+     * Adds a new purchasable property
+     * @param property The property to add
+     */
+    public void addPurchasableProperty(Property property){
+        this.purchasableProperties.add(property);
+    }
+
+    /**
+     * Adds a new rentable property
+     * @param property The property to add
+     */
+    public void addRentableProperty(Property property){
+        this.rentableProperties.add(property);
+    }
+
+    /**
+     * The satisfaction of the household taking into a account a given quality, centrality and proximity factors
+     * @param quality The quality factor
+     * @param centrality The centrality factor
+     * @param proximity The proximity factor
+     * @return
+     */
+    public double getSatisfaction(double quality, double centrality, double proximity){
+        return qualityCoefficient * quality + centralityCoefficient * centrality + proximityCoefficient * proximity;
+    }
+
+    /**
+     * Updates the agent's beliefs, desires and goals considering a given fact
+     * @param stringFact The fact
+     */
+    public void updateBelief(String stringFact){
+        FactParser parser = new FactParser(stringFact);
+        Fact fact = parser.getFact();
+        TruthDegree truthDegree = parser.getTrust();
+        agent.updateBeliefs(fact,truthDegree);
+        agent.updateDesires();
+        agent.updateGoals();
+
+    }
+
+    /**
+     * Rents a all ready aquired property
+     * @param property The current property
+     */
+    public void invest(Property property){
+        this.previousPurchasingPower = this.currentPurchasingPower;
+        this.currentPurchasingPower = this.previousPurchasingPower - property.getCurrentPrice();
+    }
+
+//    /**
+//     * Rents a property
+//     * @return The property rented
+//     */
+//    public Property rentProperty(){
+//        double maxSatisfaction = 0.0;
+//        Property selection = null;
+//        for (Property rentable : rentableProperties) {
+//            //TODO: Give real values for each component
+//            double satisfaction = rentable.getUtility();
+//            if(satisfaction > maxSatisfaction){
+//                maxSatisfaction = satisfaction;
+//                selection = rentable;
+//            }
+//        }
+//        if (selection != null){
+//            this.previousNetMonthlyIncome = this.currentNetMonthlyIncome;
+//            this.currentNetMonthlyIncome = this.previousNetMonthlyIncome - selection.getCurrentCapitalizedRent();
+//        }
+//        return selection;
+//    }
+
+    /**
+     * Generates a step in the simulation
+     * @param time The time in the simulation
+     */
+    public void step(int time){
+        // TODO: Determine how the purchasing power and net monthly income would evolve
+        previousPurchasingPower = currentPurchasingPower;
+        previousNetMonthlyIncome = currentNetMonthlyIncome;
+
+        double rnd1 = Math.random();
+
+        if (rnd1 < 0.20) {
+            currentPurchasingPower = previousPurchasingPower + (previousPurchasingPower*Math.log(time + 1))/20;
+            currentNetMonthlyIncome = previousNetMonthlyIncome + (previousPurchasingPower*(0.001));
+        }
+        else if (rnd1 < 0.4) {
+            currentPurchasingPower = previousPurchasingPower - (previousPurchasingPower*Math.log(time + 1))/20;
+            currentNetMonthlyIncome = previousNetMonthlyIncome - (previousPurchasingPower*(0.001));
+
+            currentPurchasingPower = (currentPurchasingPower < 0)? 0: currentPurchasingPower;
+            currentNetMonthlyIncome = (currentNetMonthlyIncome < 0)? 0: currentNetMonthlyIncome;
+        }
+
+        clearPurchAndRentLists();
+
+        //TODO: Determine how these values will be calculated
+        // Updates the changingHome belief
+        updateBelief("ch:" + Math.random());
+
+        // Updates the satisfied belief
+        double satisfaction = getSatisfaction(Math.random(),Math.random(),Math.random());
+        if(satisfaction > 0.5) updateBelief("sa:" + satisfaction);
+        else updateBelief("not sa:1");
+
+        // Updates the invest belief
+        double rnd2 = Math.random();
+
+        if (rnd2 < 0.5) updateBelief("i:" + 1);
+        else updateBelief("not i:" + 1);
+
+    }
+
+    public String toString(){ return id; }
+}

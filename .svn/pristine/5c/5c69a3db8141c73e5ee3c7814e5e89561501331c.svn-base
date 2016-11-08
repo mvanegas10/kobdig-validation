@@ -1,0 +1,259 @@
+package kobdig.urbanSimulation;
+
+/**
+ * Created by Meili on 21/06/2016.
+ */
+public class Property {
+
+    // CONSTANTS
+
+    /**
+     * Referente to owner occupied
+     */
+    public static final String OWNER_OCCUPIED = "Owner Occupied";
+
+    /**
+     * Reference to landlord
+     */
+    public static final String LANDLORD = "Landlord";
+
+    /**
+     * Landlord states
+     */
+    public static final String[] LANDLORD_STATES = {"For sale", "Seeking tenant", "Rented"};
+
+    /**
+     * Owner occupied states
+     */
+    public static final String[] OWNER_OCCUPIED_STATES = {"Not for sale", "For sale"};
+
+    /**
+     * Probability at any particular time step that an owner-occupier household
+     * will choose to move out
+     */
+    public final static double ABANDONMENT_FACTOR = 0.0125;
+
+    /**
+     * Probability that a tenant household will move out in a particular time step
+     */
+    public final static double TENANT_MOBILITY = 0.0561;
+
+    /**
+     * Loss in value applied to the physical condition variable of every location every time ste
+     */
+    public final static double DEPRECIATION_RATE = 0.0028;
+
+    // ATTRIBUTES
+
+    /**
+     * Unique ID for the property
+     */
+    private String id;
+
+    /**
+     * Neighborhood to which the house belongs
+     */
+    private String neighborhood;
+
+    /**
+     * Either landlord or owner occupied
+     */
+    private String ownerRelation;
+
+    /**
+     * Indicates if it is for sale, not for sale, seeking tenants or rented
+     */
+    private String state;
+
+    /**
+     * Current property's price
+     */
+    private double currentPrice;
+
+    /**
+     * Current capitalized ground rent
+     */
+    private double currentCapitalizedRent;
+
+    /**
+     * Current potential ground rent
+     */
+    private double currentPotentialRent;
+
+    /**
+     * Current property's value
+     */
+    private double currentValue;
+
+    /**
+     * Current property's price
+     */
+    private double previousPrice;
+
+    /**
+     * Current capitalized ground rent
+     */
+    private double previousCapitalizedRent;
+
+    /**
+     * Current potential ground rent
+     */
+    private double previousPotentialRent;
+
+    /**
+     * Current property's value
+     */
+    private double previousValue;
+
+    // CONSTRUCTOR
+
+    /**
+     * Property's constructor
+     * @param id The property's id
+     * @param neighborhood The property's neighborhood
+     * @param price The property's price
+     * @param rent The property's rent
+     * @param value The property's value
+     */
+    public Property(String id, String neighborhood, double price, double rent, double value){
+        this.id = id;
+        this.neighborhood = neighborhood;
+        this.ownerRelation = LANDLORD;
+        this.state = LANDLORD_STATES[0];
+        this.currentPrice = price;
+        this.currentCapitalizedRent = rent;
+        this.currentPotentialRent = rent;
+        this.currentValue = value;
+        this.previousPrice = price;
+        this.previousCapitalizedRent = rent;
+        this.previousPotentialRent = rent;
+        this.previousValue = value;
+    }
+
+    // GETTERS AND SETTERS
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getNeighborhood() {
+        return neighborhood;
+    }
+
+    public void setNeighborhood(String neighborhood) {
+        this.neighborhood = neighborhood;
+    }
+
+    public String getOwnerRelation() {
+        return ownerRelation;
+    }
+
+    public void setOwnerRelation(String ownerRelation) {
+        this.ownerRelation = ownerRelation;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public double getCurrentPrice() {
+        return currentPrice;
+    }
+
+    public void setCurrentPrice(double currentPrice) {
+        this.currentPrice = currentPrice;
+    }
+
+    public double getCurrentCapitalizedRent() {
+        return currentCapitalizedRent;
+    }
+
+    public void setCurrentCapitalizedRent(double currentCapitalizedRent) {
+        this.currentCapitalizedRent = currentCapitalizedRent;
+    }
+
+    public double getCurrentPotentialRent() {
+        return currentPotentialRent;
+    }
+
+    public void setCurrentPotentialRent(double currentPotentialRent) {
+        this.currentPotentialRent = currentPotentialRent;
+    }
+
+    public double getCurrentValue() {
+        return currentValue;
+    }
+
+    public void setCurrentValue(double currentValue) {
+        this.currentValue = currentValue;
+    }
+
+    public double getPreviousPrice() {
+        return previousPrice;
+    }
+
+    public void setPreviousPrice(double previousPrice) {
+        this.previousPrice = previousPrice;
+    }
+
+    public double getPreviousCapitalizedRent() {
+        return previousCapitalizedRent;
+    }
+
+    public void setPreviousCapitalizedRent(double previousCapitalizedRent) {
+        this.previousCapitalizedRent = previousCapitalizedRent;
+    }
+
+    public double getPreviousPotentialRent() {
+        return previousPotentialRent;
+    }
+
+    public void setPreviousPotentialRent(double previousPotentialRent) {
+        this.previousPotentialRent = previousPotentialRent;
+    }
+
+    public double getPreviousValue() {
+        return previousValue;
+    }
+
+    public void setPreviousValue(double previousValue) {
+        this.previousValue = previousValue;
+    }
+
+
+    // METHODS
+
+    /**
+     * Generates a step in the simulation
+     * @param time The time in the simulation
+     */
+    public void step(int time){
+
+        previousPrice = currentPrice;
+        previousCapitalizedRent = currentCapitalizedRent;
+        previousPotentialRent = currentPotentialRent;
+        previousValue = currentValue;
+
+        currentPrice = (previousPrice - Math.exp(time) < 0)? 0.0: previousPrice - Math.exp(time);
+        currentPotentialRent = (previousPotentialRent + Math.log(time + 1) < 0)? 0.0: previousPotentialRent +
+                Math.log(time + 1);
+        currentCapitalizedRent = (previousCapitalizedRent - Math.log(time + 1) < 0)? 0.0: previousCapitalizedRent -
+                Math.log(time + 1);
+        currentValue = (previousValue - Math.exp(time) < 0)? 0.0: previousValue - Math.exp(time);
+
+    }
+
+    public String toString(){
+        return id  + "," + neighborhood + "," + ownerRelation + "," + state +  "," + currentPrice +  "," +
+                currentCapitalizedRent +  "," + currentPotentialRent +  "," + currentValue;
+    }
+
+}
