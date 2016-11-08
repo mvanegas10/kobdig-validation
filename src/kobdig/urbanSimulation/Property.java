@@ -127,11 +127,6 @@ public class Property {
      */
     private PGgeometry geom;
 
-    /**
-     * True if the utility function is updated
-     */
-    private boolean updated;
-
     // CONSTRUCTOR
 
     /**
@@ -156,7 +151,6 @@ public class Property {
         this.previousValue = value;
         this.utility = Double.NEGATIVE_INFINITY;
         this.geom = geom;
-        this.updated = false;
     }
 
     // GETTERS AND SETTERS
@@ -228,14 +222,7 @@ public class Property {
     public PGgeometry getGeom() {
         return geom;
     }
-
-    public boolean isUpdated() {
-        return updated;
-    }
-
-    public void setUpdated(boolean updated) {
-        this.updated = updated;
-    }
+    
 
     // METHODS
 

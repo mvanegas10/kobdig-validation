@@ -99,7 +99,7 @@ public class Investor {
     /**
      * A list of purchasable properties given household's characteristics
      */
-    private ArrayList<Property> purchasableProperties;
+    private ArrayList<PropertyUtility> purchasableProperties;
 
     /**
      * The property the investor owns
@@ -185,7 +185,7 @@ public class Investor {
         return currentNetMonthlyIncome;
     }
 
-    public ArrayList<Property> getPurchasableProperties() {
+    public ArrayList<PropertyUtility> getPurchasableProperties() {
         return purchasableProperties;
     }
 
@@ -201,7 +201,7 @@ public class Investor {
         this.previousPurchasingPower = previousPurchasingPower;
     }
 
-    public void addPurchasableProperty(Property purchasable){
+    public void addPurchasableProperty(PropertyUtility purchasable){
         this.purchasableProperties.add(purchasable);
     }
 
