@@ -105,7 +105,9 @@ public class PropertyUtility {
     }
 
     public void calculateUtility(String type) {
-        if(type.equals(Simulation.INVEST)) utility = 0.3 * equipments + 0.3 * transport + 0.4 * closeness;
-        else utility = 0.4 * equipments + 0.6 * transport;
+        if(type.equals(Simulation.INVEST)) Math.random();
+        else utility =  utility =  closeness;
+//        if(type.equals(Simulation.INVEST)) utility = 0.4 * equipments + 0.6 * transport;
+//        else utility =  0.3 * equipments + 0.3 * transport + 0.4 * closeness;
     }
 }

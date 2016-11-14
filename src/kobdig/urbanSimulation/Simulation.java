@@ -175,7 +175,6 @@ public class Simulation {
                 cheapestPrice = property.getCurrentPrice();
                 cheapestProperty = property;
             }
-
             if (household.getCurrentPurchasingPower() >= property.getCurrentPrice()) {
                 PropertyUtility prop = new PropertyUtility(property,household);
                 household.addPurchasableProperty(prop);
@@ -191,6 +190,7 @@ public class Simulation {
                 rentFound++;
             }
         }
+
         if(purchFound > 0){
             household.updateBelief("ab:" + Double.toString(purchFound/(0.0 + freeProperties.size())));
         }
@@ -234,6 +234,9 @@ public class Simulation {
                     freeProperties.remove(taken.getProperty());
                     taken.getProperty().setState(Property.OCCUPIED);
                     household.setOwnerOccupied(true);
+                    taken.setHousehold(household);
+                    household.setProperty(taken.getProperty());
+                    taken.getProperty().setPurchasingPower(household.getCurrentPurchasingPower());
                 }
             }
 
@@ -248,6 +251,7 @@ public class Simulation {
                     Investor newInvestor = new Investor(investorAgent, household,taken.getProperty());
                     investors.add(newInvestor);
                     household.setProperty(null);
+                    taken.getProperty().setPurchasingPower(null);
                 }
             }
 
@@ -257,14 +261,18 @@ public class Simulation {
                 if (taken != null) {
                     forRentProperties.remove(taken.getProperty());
                     taken.getProperty().setState(Property.RENTED);
-                    household.setProperty(null);
+                    household.setProperty(taken.getProperty());
                     household.setRenting(true);
+                    taken.setHousehold(household);
+                    taken.getProperty().setPurchasingPower(household.getCurrentPurchasingPower());
                 }
             }
 
             // If the goal is to change and either sell or invest
             if (goal.contains(Household.CHANGE)){
-
+                household.getProperty().setHousehold(null);
+                household.setProperty(null);
+                household.getProperty().setPurchasingPower(null);
                 PropertyUtility taken = buyProperty(household);
                 if (taken != null) {
                     freeProperties.remove(taken.getProperty());
@@ -450,7 +458,9 @@ public class Simulation {
                         construction.setLand(taken);
                         freeProperties.add(construction);
                     }
-                    catch (Exception e) {}
+                    catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }
@@ -715,7 +725,7 @@ public class Simulation {
         PropertyUtility selection = null;
         for (PropertyUtility purchasable : investor.getRentableProperties()) {
             createPropertyUtility(purchasable, BUY_OR_RENT);
-            if(purchasable.getUtility() > maxUtility){
+            if(purchasable.getUtility() >= maxUtility){
                 maxUtility = purchasable.getUtility();
                 selection = purchasable;
             }
@@ -735,14 +745,14 @@ public class Simulation {
     public static PropertyUtility buyProperty(Household investor){
         double maxUtility = 0.0;
         PropertyUtility selection = null;
-        for (PropertyUtility purchasable : investor.getRentableProperties()) {
+        for (PropertyUtility purchasable : investor.getPurchasableProperties()) {
             createPropertyUtility(purchasable, BUY_OR_RENT);
-            if(purchasable.getUtility() > maxUtility){
+            if(purchasable.getUtility() >= maxUtility){
                 maxUtility = purchasable.getUtility();
                 selection = purchasable;
             }
         }
-        investor.setRenting(selection != null);
+        investor.setOwnerOccupied(selection != null);
         if(investor.isRenting()){
             investor.setPreviousNetMonthlyIncome(investor.getCurrentNetMonthlyIncome());
             investor.setCurrentNetMonthlyIncome(investor.getPreviousNetMonthlyIncome() - selection.getProperty().getCurrentCapitalizedRent());
@@ -759,13 +769,12 @@ public class Simulation {
         PropertyUtility selection = null;
         for (PropertyUtility purchasable : investor.getRentableProperties()) {
             createPropertyUtility(purchasable, INVEST);
-            if (purchasable.getUtility() > maxUtility) {
+            if (purchasable.getUtility() >= maxUtility) {
                 maxUtility = purchasable.getUtility();
                 selection = purchasable;
             }
         }
-        investor.setRenting(selection != null);
-        if (investor.isRenting()) {
+        if(selection != null){
             investor.setPreviousNetMonthlyIncome(investor.getCurrentNetMonthlyIncome());
             investor.setCurrentNetMonthlyIncome(investor.getPreviousNetMonthlyIncome() - selection.getProperty().getCurrentCapitalizedRent());
         }
@@ -781,7 +790,7 @@ public class Simulation {
         PropertyUtility selection = null;
         for (PropertyUtility purchasable : investor.getPurchasableProperties()) {
             createPropertyUtility(purchasable, INVEST);
-            if(purchasable.getUtility() > maxUtility){
+            if(purchasable.getUtility() >= maxUtility){
                 maxUtility = purchasable.getUtility();
                 selection = purchasable;
             }
@@ -801,113 +810,132 @@ public class Simulation {
         double maxUtility = 0.0;
         Land selection = null;
         for (Land purchasable : promoter.getPurchasableLand()) {
-//            try {
-                if (purchasable.getDivision() != null && !purchasable.isUpdated()) {
-//                    double equipUtility = 0.0;
-//                    double transportUtility = 0.0;
-//
-//                    Statement s1 = conn.createStatement();
-//                    String query_equipments = "SELECT COUNT(a.*) FROM " + filteredEquipments + ")) a INNER JOIN buffer b ON ST_Intersects(a.geom, b.geom) WHERE b.id_land = " + purchasable.getId();
-//                    ResultSet r1 = s1.executeQuery(query_equipments);
-//                    if(r1.next()) {
-//                        equipUtility = r1.getInt(1);
-//                    }
-//                    s1.close();
-//                    r1.close();
-//
-//
-//                    Statement s2 = conn.createStatement();
-//                    String query_transport = "SELECT COUNT(a.*) FROM " + filteredNetwork + ")) a INNER JOIN buffer b ON ST_Intersects(a.geom, b.geom) WHERE b.id_land = " + purchasable.getId();
-//                    ResultSet r2 = s2.executeQuery(query_transport);
-//                    if(r2.next()) {
-//                        transportUtility = r2.getInt(1);
-//                    }
-//                    s2.close();
-//                    r2.close();
-//                    purchasable.setUtility(0.4*(equipUtility/(double)equipmentsLength) + 0.6*(transportUtility/(double)networkLength));
-////                    purchasable.setUtility(0.0*(equipUtility/(double)equipmentsLength) + 1.0*(transportUtility/(double)networkLength));
-                    purchasable.setUtility(Math.random());
-                    purchasable.setUpdated(true);
-                }
-                if(purchasable.getUtility() > maxUtility){
-                    maxUtility = purchasable.getUtility();
-                    selection = purchasable;
-                }
-//            }
-//            catch (SQLException e){
-//                e.printStackTrace();
-//            }
+            createLandUtility(purchasable);
+            if(purchasable.getUtility() >= maxUtility){
+                maxUtility = purchasable.getUtility();
+                selection = purchasable;
+            }
         }
         if (selection != null){
             promoter.setPurchasingPower(promoter.getPurchasingPower() - selection.getPrice());
         }
         return selection;
     }
-    
+
+    /**
+     * Create land utility
+     * @param land
+     */
+    public static void createLandUtility(Land land) {
+
+        // Sets transport utility and equipments utility
+
+        if (land.getDivision() != null) {
+//            try {
+//                double equipUtility = 0.0;
+//                double transportUtility = 0.0;
+//
+//                Statement s1 = conn.createStatement();
+//                String query_equipments = "SELECT COUNT(a.*) FROM " + filteredEquipments + ")) a INNER JOIN buffer b " +
+//                        "ON ST_Intersects(a.geom, b.geom) WHERE b.id_land = " + land.getId();
+//                ResultSet r1 = s1.executeQuery(query_equipments);
+//                if (r1.next()) {
+//                    equipUtility = r1.getInt(1);
+//                }
+//                s1.close();
+//                r1.close();
+//
+//
+//                Statement s2 = conn.createStatement();
+//                String query_transport = "SELECT COUNT(a.*) FROM " + filteredNetwork + ")) a INNER JOIN buffer b " +
+//                        "ON ST_Intersects(a.geom, b.geom) WHERE b.id_land = " + land.getId();
+//                ResultSet r2 = s2.executeQuery(query_transport);
+//                if (r2.next()) {
+//                    transportUtility = r2.getInt(1);
+//                }
+//                s2.close();
+//                r2.close();
+
+            land.setUtility(Math.random());
+//            land.setUtility(0.4*(equipUtility/(double)equipmentsLength) + 0.6*(transportUtility/(double)networkLength));
+//            } catch (SQLException e) {
+//                e.printStackTrace();
+//            }
+
+        }
+    }
+
+    /**
+     * Create property utility
+     * @param property
+     * @param type
+     */
     public static void createPropertyUtility(PropertyUtility property, String type) {
 
         // Sets transport utility and equipments utility
 
-        if (property.getProperty().getDivision() != null) {
-            try {
-                double equipUtility = 0.0;
-                double transportUtility = 0.0;
-
-                Statement s1 = conn.createStatement();
-                String query_equipments = "SELECT COUNT(a.*) FROM " + filteredEquipments + ")) a INNER JOIN buffer b " +
-                        "ON ST_Intersects(a.geom, b.geom) WHERE b.id_land = " + property.getProperty().getId();
-                ResultSet r1 = s1.executeQuery(query_equipments);
-                if (r1.next()) {
-                    equipUtility = r1.getInt(1);
-                }
-                s1.close();
-                r1.close();
-
-
-                Statement s2 = conn.createStatement();
-                String query_transport = "SELECT COUNT(a.*) FROM " + filteredNetwork + ")) a INNER JOIN buffer b " +
-                        "ON ST_Intersects(a.geom, b.geom) WHERE b.id_land = " + property.getProperty().getId();
-                ResultSet r2 = s2.executeQuery(query_transport);
-                if (r2.next()) {
-                    transportUtility = r2.getInt(1);
-                }
-                s2.close();
-                r2.close();
-
-                property.setEquipments(equipUtility/(double)equipmentsLength);
-                property.setTransport(transportUtility/(double)networkLength);
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-
-        }
+//        if (property.getProperty().getDivision() != null) {
+//            try {
+//                double equipUtility = 0.0;
+//                double transportUtility = 0.0;
+//
+//                Statement s1 = conn.createStatement();
+//                String query_equipments = "SELECT COUNT(a.*) FROM " + filteredEquipments + ")) a INNER JOIN buffer b " +
+//                        "ON ST_Intersects(a.geom, b.geom) WHERE b.id_land = " + property.getProperty().getLand().getId();
+//                ResultSet r1 = s1.executeQuery(query_equipments);
+//                if (r1.next()) {
+//                    equipUtility = r1.getInt(1);
+//                }
+//                s1.close();
+//                r1.close();
+//
+//
+//                Statement s2 = conn.createStatement();
+//                String query_transport = "SELECT COUNT(a.*) FROM " + filteredNetwork + ")) a INNER JOIN buffer b " +
+//                        "ON ST_Intersects(a.geom, b.geom) WHERE b.id_land = " + property.getProperty().getLand().getId();
+//                ResultSet r2 = s2.executeQuery(query_transport);
+//                if (r2.next()) {
+//                    transportUtility = r2.getInt(1);
+//                }
+//                s2.close();
+//                r2.close();
+//
+//                property.setEquipments(equipUtility/(double)equipmentsLength);
+//                property.setTransport(transportUtility/(double)networkLength);
+//            } catch (SQLException e) {
+//                e.printStackTrace();
+//            }
+//
+//        }
 
         if (type.equals(BUY_OR_RENT)) {
             // Creates property utility
 
             String sqlCreate = "INSERT INTO properties_utility (property_id,household_id,class) VALUES (" +
-                    property.getProperty().getId() + "," + property.getHousehold().getId() + ",'" + property.getHousehold().getCurrentPurchasingPower() + "');";
+                    property.getProperty().getId() + "," + property.getHousehold().getId() + ",'" +
+                    property.getHousehold().getCurrentPurchasingPower() + "');";
 
-            String sqlCreateGeom = "UPDATE properties_utility SET geom = (SELECT ST_SetSRID(ST_MakePoint(" + property.getProperty().getLongitude()
-                    + ", " + property.getProperty().getLand().getLatitude() + "),4326)) WHERE property_id = " + property.getProperty().getId()
-                    + " AND household_id = " + property.getHousehold().getId()  + ";";
+            String sqlCreateGeom = "UPDATE properties_utility SET geom = (SELECT ST_SetSRID(ST_MakePoint(" +
+                    property.getProperty().getLongitude() + ", " + property.getProperty().getLand().getLatitude() +
+                    "),4326)) WHERE property_id = " + property.getProperty().getId() + " AND household_id = " +
+                    property.getHousehold().getId()  + ";";
 
-            String sqlGetSimilar = "SELECT COUNT(*) FROM properties_utility prop INNER JOIN (SELECT ST_Buffer(geom, 0.008) AS geom " +
-                    "FROM properties_utility WHERE property_id = " + property.getProperty().getId() + " AND household_id = " +
-                    property.getHousehold().getId() + ") buffer ON ST_INTERSECTS (prop.geom,buffer.geom) WHERE class BETWEEN (prop.class - 5) AND (prop.class + 15);";
+            String sqlGetSimilar = "SELECT * FROM properties_state prop INNER JOIN (SELECT ST_Buffer(geom, 100) AS geom,class FROM " +
+                    "properties_utility WHERE property_id = " + property.getProperty().getId() + " AND household_id = " +
+                    property.getHousehold().getId()  + ") buffer ON ST_INTERSECTS (prop.geom,buffer.geom) WHERE " +
+                    "purchasing_power BETWEEN (buffer.class - 5) AND (buffer.class + 15);";
+
 
             int neighbors = 0;
 
             try {
                 Statement s = conn.createStatement();
-                ResultSet r = s.executeQuery(sqlCreate);
+                s.executeUpdate(sqlCreate);
                 s.close();
-                r.close();
 
                 s = conn.createStatement();
-                r = s.executeQuery(sqlCreateGeom);
+                s.executeUpdate(sqlCreateGeom);
                 s.close();
-                r.close();
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -923,8 +951,11 @@ public class Simulation {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-
-            property.setCloseness(neighbors);
+            if(neighbors > 0){
+                property.setCloseness(neighbors);
+                System.out.println(sqlGetSimilar);
+            }
+            else property.setCloseness(0.0);
         }
 
         property.calculateUtility(type);
@@ -986,13 +1017,15 @@ public class Simulation {
         for (AdministrativeDivision division : divisions) {
             if (division != null) {
                 for (Property property : properties.get(division)) {
-                    Statement s = conn.createStatement();
-                    String query = "INSERT INTO properties_state (\"step\",\"idProperty\",\"price\",\"rent\",\"value\",\"state\"" +
-                            ",\"geom\",\"codigo_upz\") VALUES ('" + time + "','" + property.getId() + "','" + property.getCurrentPrice() + "','" +
-                            property.getCurrentCapitalizedRent() + "','" + property.getCurrentValue() + "','" + property.getState() +
-                            "','" + property.getGeom() + "','" + division.getCode() + "')";
-                    s.executeUpdate(query);
-                    s.close();
+                    if (property.getPurchasingPower() != null) {
+                        Statement s = conn.createStatement();
+                        String query = "INSERT INTO properties_state (\"step\",\"idProperty\",\"price\",\"rent\",\"value\",\"state\"" +
+                                ",\"geom\",\"codigo_upz\",\"purchasing_power\") VALUES ('" + time + "','" + property.getId() + "','" + property.getCurrentPrice() + "','" +
+                                property.getCurrentCapitalizedRent() + "','" + property.getCurrentValue() + "','" + property.getState() +
+                                "','" + property.getGeom() + "','" + division.getCode() + "','" + property.getPurchasingPower() + "')";
+                        s.executeUpdate(query);
+                        s.close();
+                    }
                 }
             }
         }
@@ -1047,7 +1080,7 @@ public class Simulation {
 
         Statement s2 = conn.createStatement();
         String query = "CREATE TABLE \"properties_state\" (gid serial,\"step\" numeric,\"idProperty\" numeric,\"price\""+
-                "numeric,\"rent\" numeric,\"value\" numeric,\"state\" varchar(200),\"codigo_upz\" numeric)";
+                "numeric,\"rent\" numeric,\"value\" numeric,\"state\" varchar(200),\"codigo_upz\" numeric,\"purchasing_power\" numeric)";
         s2.executeUpdate(query);
         s2.close();
 

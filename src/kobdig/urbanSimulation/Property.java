@@ -73,6 +73,11 @@ public class Property {
     private String state;
 
     /**
+     * The householder
+     */
+    private Household household;
+
+    /**
      * Current property's price
      */
     private double currentPrice;
@@ -111,6 +116,11 @@ public class Property {
      * Current property's value
      */
     private double previousValue;
+
+    /**
+     * Purchasing power from household when bought
+     */
+    private Double purchasingPower;
 
     /**
      * Utility
@@ -219,10 +229,25 @@ public class Property {
         this.land = land;
     }
 
+    public Household getHousehold() {
+        return household;
+    }
+
+    public void setHousehold(Household household) {
+        this.household = household;
+    }
+
     public PGgeometry getGeom() {
         return geom;
     }
-    
+
+    public Double getPurchasingPower() {
+        return purchasingPower;
+    }
+
+    public void setPurchasingPower(Double purchasingPower) {
+        this.purchasingPower = purchasingPower;
+    }
 
     // METHODS
 
